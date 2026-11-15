@@ -17,8 +17,10 @@ fn load_bmp(path: str) *sdl3::Surface = {
 	};
 };
 
-fn create_texture_from_surface(render: *sdl3::Renderer, 
-	surf: *sdl3::Surface) *sdl3::Texture = {
+fn create_texture_from_surface(
+	render: *sdl3::Renderer, 
+	surf: *sdl3::Surface,
+) *sdl3::Texture = {
 	const tex = 
 		match (sdl3::CreateTextureFromSurface(render, surf)) {
 		case let t: *sdl3::Texture => yield t;
