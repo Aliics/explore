@@ -18,13 +18,13 @@ fn asprite_psize(a: asprite) dim = {
 };
 
 export fn asprite_pfrect(a: asprite, p: int) sdl3::FRect = {
-		const psize = asprite_psize(a);
-		const ppos = a.pposes[p];
-		return sdl3::FRect {
-			x = (ppos.x * psize.w): f32, 
-			y = (ppos.y * psize.h): f32,
-			w = psize.w: f32, h = psize.h: f32,
-		};
+	const psize = asprite_psize(a);
+	const ppos = a.pposes[p];
+	return sdl3::FRect {
+		x = (ppos.x * psize.w): f32, 
+		y = (ppos.y * psize.h): f32,
+		w = psize.w: f32, h = psize.h: f32,
+	};
 };
 
 export fn asprite_frame(a: asprite) int = {
