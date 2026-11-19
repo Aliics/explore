@@ -33,6 +33,38 @@ fn create_texture_from_surface(
 	return tex;
 };
 
+fn bbox_intersect(a: sdl3::FRect, b: sdl3::FRect) bool = {
+	const at = a.y;
+	const ab = at + a.h;
+	const al = a.x;
+	const ar = al + a.w;
+	const bt = b.y;
+	const bb = bt + b.h;
+	const bl = b.x;
+	const br = bl + b.w;
+	return 
+		// horizontal trapped
+		(at < bt && ab > bt || at < bb && ab > bb) &&
+		// vertical trapped
+		(al < bl && ar > bl || al < br && ar > br) || 
+		// horizontal trapped
+		(bt < at && bb > at || bt < ab && bb > ab) &&
+		// vertical trapped
+		(bl < al && br > al || bl < ar && br > ar);
+};
+
+type sprite = struct {
+	pos: pos,
+	
+	sprite_t: *sdl3::Texture,
+	sprite_s: dim,
+};
+
+type obstacle = struct {
+	sprite,
+	coll: bool,
+};
+
 export fn main() void = {
 	sdl3::Init(sdl3::InitFlags::VIDEO)!;
 	defer sdl3::Quit();
@@ -60,7 +92,13 @@ export fn main() void = {
 	};
 
 	sdl3::DestroySurface(atlas_surf);
-		
+
+	const rock_surf = load_bmp("rock-pile.bmp\0");
+	const rock_tex = create_texture_from_surface(render, rock_surf);
+	defer sdl3::DestroyTexture(rock_tex);	
+
+	sdl3::DestroySurface(rock_surf);	
+	
 	const idle = asprite {
 		time = 1_000,
 		
@@ -77,6 +115,26 @@ export fn main() void = {
 			},
 		],
 	};
+
+	const obstacles = [
+		obstacle {
+			pos = pos { x = 128, y = 128 },
+			
+			sprite_t = rock_tex,
+			sprite_s = dim { w = 128, h = 128 },
+
+			coll = true,
+		},
+
+		obstacle {
+			pos = pos { x = 312, y = 256 },
+			
+			sprite_t = rock_tex,
+			sprite_s = dim { w = 64, h = 64 },
+
+			coll = true,
+		},
+	];
 
 	let curr_asprite = &idle;
 
@@ -122,13 +180,40 @@ export fn main() void = {
 				};
 			};
 
-			pos.x += mov.x * dt * PLAYER_SPEED;
-			pos.y += mov.y * dt * PLAYER_SPEED;
+			const next = fpos {
+				x = pos.x + mov.x * dt * PLAYER_SPEED,
+				y = pos.y + mov.y * dt * PLAYER_SPEED,	
+			};
+
+			const pbbox = sdl3::FRect {
+				w = PLAYER_SIZE: f32, h = PLAYER_SIZE: f32,
+				x = next.x, y = next.y,
+			};
+			const next_locks = {
+				let locks = false;
+				for (let ob .. obstacles) {
+					const obbox = sdl3::FRect {
+						w = ob.sprite_s.w: f32, 
+						h = ob.sprite_s.h: f32,
+						x = ob.pos.x: f32,
+						y = ob.pos.y: f32,	
+					};
+					if (bbox_intersect(pbbox, obbox)) {
+						locks = true;
+						break;
+					};
+				};
+				yield locks;
+			};
+
+			if (!next_locks) {
+				pos = next;
+			};
 		};
 		
 		handle_debug_info(keys);
 		
-		sdl3::SetRenderDrawColor(render, 255, 50, 50, 255)!;
+		sdl3::SetRenderDrawColor(render, 50, 215, 75, 255)!;
 		sdl3::RenderClear(render)!;
 
 		render_asprite(
@@ -137,6 +222,20 @@ export fn main() void = {
 			dim { w = PLAYER_SIZE, h = PLAYER_SIZE },
 			pos,
 		);
+
+		for (let ob .. obstacles) {
+			sdl3::RenderTexture(
+				render,
+				ob.sprite_t,
+				null,
+				&sdl3::FRect {
+					w = ob.sprite_s.w: f32, 
+					h = ob.sprite_s.h: f32,
+					x = ob.pos.x: f32,
+					y = ob.pos.y: f32,	
+				},
+			)!;
+		};
 
 		render_debug_info(render, keys, pos);
 		
